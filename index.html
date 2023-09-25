@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>RGB LED Control</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    form {
+      margin-top: 30px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input[type="range"] {
+      width: 200px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>RGB LED Control</h1>
+  <form>
+    <label for="color_pick">Color:</label>
+    <input type="color" id="color_pick">
+
+    <label for="brightness">Brightness:</label>
+    <input type="range" id="brightness" name="brightness" min="0" max="100" step="1" value="0">
+    <br>
+    <button id="colorset">Set LED</button>
+  </form>
+
+  <script>
+    function rgbToHex(r, g, b) {
+      const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+      };
+      return "#" + toHex(r) + toHex(g) + toHex(b);
+    }
+    function hexToRgb(hex) {
+      hex = hex.replace(/^#/, '');
+      if (hex.length === 3) {
+        hex = hex.replace(/(.)/g, '$1$1');
+      }
+      const bigint = parseInt(hex, 16);
+      const red = (bigint >> 16) & 255;
+      const green = (bigint >> 8) & 255;
+      const blue = bigint & 255;
+      return { r: red, g: green, b: blue };
+    }
+
+    function setInitialValues(color, brightness) {
+      var colorPick = document.getElementById('color_pick');
+      var brightnessSlider = document.getElementById('brightness');
+
+      colorPick.value = color;
+      brightnessSlider.value = brightness;
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/value", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        var response = JSON.parse(xhr.responseText);
+        var color = rgbToHex(response.r, response.g, response.b);
+        var brightness = response.brightness;
+
+        setInitialValues(color, brightness);
+      }
+    };
+    xhr.send();
+
+    document.getElementById("colorset").addEventListener("click", function (event) {
+      event.preventDefault();
+
+      var colorPick = document.getElementById('color_pick');
+      var color = hexToRgb(colorPick.value);
+      var brightness = document.getElementById("brightness").value;
+
+      var xhr = new XMLHttpRequest();
+
+      xhr.open("POST", "/setrgb", true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+
+      xhr.send(JSON.stringify({ brightness, red: color.r, green: color.g, blue: color.b }));
+
+      // Handle the response from the server
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log("POST request was successful!");
+          } else {
+            console.error("POST request failed with status: " + xhr.status);
+          }
+        }
+      };
+    });
+  </script>
+</body>
+
+</html>
